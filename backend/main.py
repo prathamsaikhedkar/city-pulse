@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 import os, json, pickle, requests
 import pandas as pd
 import numpy as np
@@ -12,8 +13,6 @@ from datetime import datetime, timezone, timedelta
 load_dotenv()
 
 # ── Database ───────────────────────────────────────────────────────────────────
-# Uses the Neon cloud connection string from .env (WEB_POSTGRES_LINK).
-# Falls back to a local Postgres URL for local dev if the env var is absent.
 DATABASE_URL = os.getenv(
     "WEB_POSTGRES_LINK",
     f"postgresql+psycopg2://postgres:{os.getenv('POSTGRES_PW')}@127.0.0.1:5432/AQI_Data"
@@ -22,14 +21,14 @@ engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 # ── ML Model ───────────────────────────────────────────────────────────────────
 _dir = os.path.dirname(__file__)
-with open(os.path.join(_dir, 'model.pkl'), 'rb') as f:
+with open(os.path.join(_dir, 'model2.pkl'), 'rb') as f:
     model = pickle.load(f)
 
 # ── Locations ──────────────────────────────────────────────────────────────────
 with open(os.path.join(_dir, 'gwl_data.json'), 'r') as f:
     LOCATIONS = json.load(f)
 
-# ── OWM API keys (rotated to stay within free-tier rate limits) ────────────────
+# ── API keys ───────────────────────────────────────────────────────────────────
 API_KEYS = [k for k in [os.getenv(f"AQI_API_KEY_{i}") for i in range(1, 5)] if k]
 
 OWM_URL   = "https://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={key}"
@@ -40,32 +39,76 @@ METEO_URL = (
     "&forecast_days=1&timezone=GMT"
 )
 
-# ── AQI breakpoints (Indian standard) ─────────────────────────────────────────
-PM25_BP = [
-    {'c_low': 0,   'c_high': 30,    'i_low': 0,   'i_high': 50},
-    {'c_low': 30,  'c_high': 60,    'i_low': 51,  'i_high': 100},
-    {'c_low': 60,  'c_high': 90,    'i_low': 101, 'i_high': 200},
-    {'c_low': 90,  'c_high': 120,   'i_low': 201, 'i_high': 300},
-    {'c_low': 120, 'c_high': 250,   'i_low': 301, 'i_high': 400},
-    {'c_low': 250, 'c_high': 10000, 'i_low': 401, 'i_high': 500},
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AQI CALCULATION  — two separate functions with different standards
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# WHY TWO FUNCTIONS:
+#   • get_aqi_display()  — US EPA breakpoints.
+#     All major AQI comparison sites (AQI.in, AQICN, IQAir) use this standard.
+#     Used only for the /api/history endpoint so the dashboard matches real-world readings.
+#
+#   • get_aqi_model()  — Indian NAQI (CPCB) breakpoints.
+#     The XGBoost model was trained on Indian NAQI values.
+#     Used as input features inside the autoregressive prediction loop so the model
+#     receives values from the same distribution it was trained on.
+# ───────────────────────────────────────────────────────────────────────────────
+
+# US EPA breakpoints — used for display
+_EPA_PM25 = [
+    {'c_lo': 0.0,   'c_hi': 12.0,  'i_lo': 0,   'i_hi': 50},
+    {'c_lo': 12.1,  'c_hi': 35.4,  'i_lo': 51,  'i_hi': 100},
+    {'c_lo': 35.5,  'c_hi': 55.4,  'i_lo': 101, 'i_hi': 150},
+    {'c_lo': 55.5,  'c_hi': 150.4, 'i_lo': 151, 'i_hi': 200},
+    {'c_lo': 150.5, 'c_hi': 250.4, 'i_lo': 201, 'i_hi': 300},
+    {'c_lo': 250.5, 'c_hi': 350.4, 'i_lo': 301, 'i_hi': 400},
+    {'c_lo': 350.5, 'c_hi': 500.4, 'i_lo': 401, 'i_hi': 500},
 ]
-PM10_BP = [
-    {'c_low': 0,   'c_high': 50,    'i_low': 0,   'i_high': 50},
-    {'c_low': 50,  'c_high': 100,   'i_low': 51,  'i_high': 100},
-    {'c_low': 100, 'c_high': 250,   'i_low': 101, 'i_high': 200},
-    {'c_low': 250, 'c_high': 350,   'i_low': 201, 'i_high': 300},
-    {'c_low': 350, 'c_high': 430,   'i_low': 301, 'i_high': 400},
-    {'c_low': 430, 'c_high': 10000, 'i_low': 401, 'i_high': 500},
+_EPA_PM10 = [
+    {'c_lo': 0,   'c_hi': 54,  'i_lo': 0,   'i_hi': 50},
+    {'c_lo': 55,  'c_hi': 154, 'i_lo': 51,  'i_hi': 100},
+    {'c_lo': 155, 'c_hi': 254, 'i_lo': 101, 'i_hi': 150},
+    {'c_lo': 255, 'c_hi': 354, 'i_lo': 151, 'i_hi': 200},
+    {'c_lo': 355, 'c_hi': 424, 'i_lo': 201, 'i_hi': 300},
+    {'c_lo': 425, 'c_hi': 504, 'i_lo': 301, 'i_hi': 400},
+    {'c_lo': 505, 'c_hi': 604, 'i_lo': 401, 'i_hi': 500},
 ]
+
+# Indian NAQI (CPCB) breakpoints — used for model predictions
+_NAQI_PM25 = [
+    {'c_lo': 0,   'c_hi': 30,    'i_lo': 0,   'i_hi': 50},
+    {'c_lo': 30,  'c_hi': 60,    'i_lo': 51,  'i_hi': 100},
+    {'c_lo': 60,  'c_hi': 90,    'i_lo': 101, 'i_hi': 200},
+    {'c_lo': 90,  'c_hi': 120,   'i_lo': 201, 'i_hi': 300},
+    {'c_lo': 120, 'c_hi': 250,   'i_lo': 301, 'i_hi': 400},
+    {'c_lo': 250, 'c_hi': 10000, 'i_lo': 401, 'i_hi': 500},
+]
+_NAQI_PM10 = [
+    {'c_lo': 0,   'c_hi': 50,    'i_lo': 0,   'i_hi': 50},
+    {'c_lo': 50,  'c_hi': 100,   'i_lo': 51,  'i_hi': 100},
+    {'c_lo': 100, 'c_hi': 250,   'i_lo': 101, 'i_hi': 200},
+    {'c_lo': 250, 'c_hi': 350,   'i_lo': 201, 'i_hi': 300},
+    {'c_lo': 350, 'c_hi': 430,   'i_lo': 301, 'i_hi': 400},
+    {'c_lo': 430, 'c_hi': 10000, 'i_lo': 401, 'i_hi': 500},
+]
+
 
 def _sub_index(conc, bps):
     for bp in bps:
-        if bp['c_low'] <= conc <= bp['c_high']:
-            return ((bp['i_high'] - bp['i_low']) / (bp['c_high'] - bp['c_low'])) * (conc - bp['c_low']) + bp['i_low']
+        if bp['c_lo'] <= conc <= bp['c_hi']:
+            return ((bp['i_hi'] - bp['i_lo']) / (bp['c_hi'] - bp['c_lo'])) * (conc - bp['c_lo']) + bp['i_lo']
     return 500
 
-def get_aqi(pm25, pm10):
-    return max(_sub_index(pm25, PM25_BP), _sub_index(pm10, PM10_BP))
+
+def get_aqi_display(pm25, pm10):
+    """US EPA AQI — matches what comparison websites show."""
+    return max(_sub_index(pm25, _EPA_PM25), _sub_index(pm10, _EPA_PM10))
+
+
+def get_aqi_model(pm25, pm10):
+    """Indian NAQI — matches the scale the XGBoost model was trained on."""
+    return max(_sub_index(pm25, _NAQI_PM25), _sub_index(pm10, _NAQI_PM10))
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -73,7 +116,7 @@ def get_aqi(pm25, pm10):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _ensure_unique_constraint():
-    """Idempotently add UNIQUE(time, location_id) so ON CONFLICT works."""
+    """Idempotently add UNIQUE(time, location_id) for upsert safety."""
     with engine.begin() as conn:
         conn.execute(text("""
             DO $$
@@ -90,11 +133,15 @@ def _ensure_unique_constraint():
 
 def fetch_and_store_latest():
     """
-    Pull the current air pollution + weather reading for every location and
-    upsert it into the database. Uses ON CONFLICT DO NOTHING — safe to call
-    any number of times without creating duplicates.
+    Fetch the current air quality + weather reading for every location from OWM
+    and Open-Meteo, then upsert into the DB.
+
+    ON CONFLICT DO NOTHING ensures re-runs are safe without creating duplicates.
+    The scheduler calls this at :05 past every UTC hour via CronTrigger.
     """
-    print(f"[Ingestion] Starting at {datetime.now(tz=timezone.utc).isoformat()}")
+    now_utc = datetime.now(tz=timezone.utc)
+    print(f"[Ingestion] Starting at {now_utc.isoformat()}")
+
     session   = requests.Session()
     key_cycle = 0
     ok_count  = 0
@@ -111,19 +158,22 @@ def fetch_and_store_latest():
         lat, lon, loc_id = loc['lat'], loc['lng'], loc['id']
         key = API_KEYS[key_cycle % len(API_KEYS)]
         try:
-            # 1. Current OWM air pollution reading
-            air = session.get(OWM_URL.format(lat=lat, lon=lon, key=key), timeout=10).json()
+            # 1. OWM current air pollution
+            air   = session.get(OWM_URL.format(lat=lat, lon=lon, key=key), timeout=10).json()
             entry = air['list'][0]
             comp  = entry['components']
-            ts    = datetime.fromtimestamp(entry['dt'], tz=timezone.utc).replace(minute=0, second=0, microsecond=0)
+            # Round down to the hour for a clean, consistent primary key
+            ts = datetime.fromtimestamp(entry['dt'], tz=timezone.utc).replace(
+                minute=0, second=0, microsecond=0
+            )
 
-            # 2. Open-Meteo weather (free, no key required)
-            wx = session.get(METEO_URL.format(lat=lat, lon=lon), timeout=10).json()
-            hourly      = wx.get('hourly', {})
-            target_str  = ts.strftime('%Y-%m-%dT%H:00')
-            times_list  = hourly.get('time', [])
+            # 2. Open-Meteo weather (free, no API key needed)
+            wx      = session.get(METEO_URL.format(lat=lat, lon=lon), timeout=10).json()
+            hourly  = wx.get('hourly', {})
+            t_str   = ts.strftime('%Y-%m-%dT%H:00')
+            t_list  = hourly.get('time', [])
             try:
-                idx  = times_list.index(target_str)
+                idx  = t_list.index(t_str)
                 temp = hourly['temperature_2m'][idx]
                 hum  = hourly['relative_humidity_2m'][idx]
             except (ValueError, IndexError):
@@ -135,8 +185,8 @@ def fetch_and_store_latest():
                 conn.execute(insert_sql, {
                     'time': ts, 'location_id': loc_id,
                     'pm2_5': comp.get('pm2_5', 0), 'pm10': comp.get('pm10', 0),
-                    'co':    comp.get('co',    0), 'no':   comp.get('no',   0),
-                    'no2':   comp.get('no2',   0), 'o3':   comp.get('o3',   0),
+                    'co':    comp.get('co',    0), 'no':  comp.get('no',   0),
+                    'no2':   comp.get('no2',   0), 'o3':  comp.get('o3',   0),
                     'so2':   comp.get('so2',   0),
                     'temperature': temp, 'humidity': hum,
                 })
@@ -150,23 +200,32 @@ def fetch_and_store_latest():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# LIFESPAN  (replaces deprecated @app.on_event)
+# LIFESPAN
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ── Startup ──
+    # ── Startup ─────────────────────────────────────────────────────────────
     _ensure_unique_constraint()
-    fetch_and_store_latest()               # immediate refresh on every boot
+    fetch_and_store_latest()   # always refresh on boot so data is never stale
 
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(fetch_and_store_latest, 'interval', hours=1, id='aqi_refresh')
+    scheduler = BackgroundScheduler(timezone="UTC")
+    scheduler.add_job(
+        fetch_and_store_latest,
+        # CronTrigger fires at :05 past every hour regardless of server restart time.
+        # This prevents the drift/gap problem caused by interval-based scheduling.
+        trigger=CronTrigger(minute=5),
+        id='aqi_refresh',
+        replace_existing=True,
+        misfire_grace_time=300,   # if the :05 tick is missed by up to 5 min, still run
+        coalesce=True,            # if multiple ticks were missed, run once not many times
+    )
     scheduler.start()
-    print("[Scheduler] Hourly refresh job started.")
+    print("[Scheduler] CronTrigger active — runs at :05 past every UTC hour.")
 
-    yield  # ← app runs here
+    yield  # ← app serves requests here
 
-    # ── Shutdown ──
+    # ── Shutdown ─────────────────────────────────────────────────────────────
     scheduler.shutdown(wait=False)
     print("[Scheduler] Stopped.")
 
@@ -177,9 +236,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="CityPulse API", lifespan=lifespan)
 
-# Allow all origins in dev; lock this down to your Vercel URL in production.
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -189,20 +246,20 @@ app.add_middleware(
 )
 
 
-# ── Helper: build prediction features ─────────────────────────────────────────
+# ── Shared prediction helper ───────────────────────────────────────────────────
 
 def _predict_24h(aqi_history, latest_time, const_temp, const_hum, loc_id, as_full=False):
     """
     Autoregressive 24-step XGBoost forecast.
-    Returns a list of dicts with 'time' and 'aqi' (or 'predicted_aqi').
+    Uses get_aqi_model() (Indian NAQI) for input features — the scale the
+    model was trained on. Returns raw model-scale predictions.
     """
     predictions = []
-    aqi_hist    = list(aqi_history)
+    hist = list(aqi_history)
 
     for step in range(1, 25):
-        t            = latest_time + timedelta(hours=step)
-        w24          = aqi_hist[-24:]
-        w6           = aqi_hist[-6:]
+        t = latest_time + timedelta(hours=step)
+        w24, w6 = hist[-24:], hist[-6:]
 
         features = {
             'location_id':          [int(loc_id)],
@@ -216,7 +273,7 @@ def _predict_24h(aqi_history, latest_time, const_temp, const_hum, loc_id, as_ful
             'humidity':             [const_hum],
         }
         for lag in range(1, 25):
-            features[f'aqi_lag_{lag}'] = [aqi_hist[-lag]]
+            features[f'aqi_lag_{lag}'] = [hist[-lag]]
 
         pred = float(model.predict(pd.DataFrame(features))[0])
         entry = {'time': t.isoformat(), 'aqi': round(pred, 2)}
@@ -224,7 +281,7 @@ def _predict_24h(aqi_history, latest_time, const_temp, const_hum, loc_id, as_ful
             entry['temperature'] = round(const_temp, 1)
             entry['humidity']    = round(const_hum, 0)
         predictions.append(entry)
-        aqi_hist.append(pred)
+        hist.append(pred)
 
     return predictions
 
@@ -235,7 +292,10 @@ def _predict_24h(aqi_history, latest_time, const_temp, const_hum, loc_id, as_ful
 
 @app.get("/api/history")
 def get_history():
-    """Return the last 3 days of air quality data for every location."""
+    """
+    Returns the last 3 days of readings with US EPA AQI so the dashboard
+    matches values shown on comparison websites.
+    """
     query = """
     WITH max_time AS (SELECT MAX(time) AS mtime FROM public.air_quality_data)
     SELECT time, location_id, pm2_5, pm10, co, no, no2, o3, so2, temperature, humidity
@@ -244,7 +304,8 @@ def get_history():
     ORDER BY location_id, time DESC;
     """
     df = pd.read_sql(query, engine)
-    df['aqi'] = df.apply(lambda r: get_aqi(r['pm2_5'], r['pm10']), axis=1)
+    # US EPA AQI for display
+    df['aqi'] = df.apply(lambda r: get_aqi_display(r['pm2_5'], r['pm10']), axis=1)
     df = df[df['aqi'] < 450]
 
     return {int(loc_id): grp.to_dict('records') for loc_id, grp in df.groupby('location_id')}
@@ -252,7 +313,7 @@ def get_history():
 
 @app.get("/api/predict/{location_id}")
 def predict_single(location_id: int):
-    """Return a 24-hour XGBoost AQI forecast for one location."""
+    """24-hour XGBoost forecast for one location."""
     query = f"""
     SELECT time, pm2_5, pm10, temperature, humidity
     FROM public.air_quality_data
@@ -264,14 +325,14 @@ def predict_single(location_id: int):
         return {"error": "Not enough data for this location."}
 
     df = df.sort_values('time').reset_index(drop=True)
-    df['aqi'] = df.apply(lambda r: get_aqi(r['pm2_5'], r['pm10']), axis=1)
+    # Model features now use US EPA (new model2.pkl was retrained on this)
+    df['aqi'] = df.apply(lambda r: get_aqi_display(r['pm2_5'], r['pm10']), axis=1)
 
     preds = _predict_24h(
         df['aqi'].tolist(), df['time'].iloc[-1],
         float(df['temperature'].iloc[-1]), float(df['humidity'].iloc[-1]),
         location_id
     )
-    # Keep backward-compat key name for the single-location endpoint
     for p in preds:
         p['predicted_aqi'] = p.pop('aqi')
 
@@ -280,7 +341,7 @@ def predict_single(location_id: int):
 
 @app.get("/api/predict_all")
 def predict_all():
-    """Return a 24-hour forecast for all 15 locations."""
+    """24-hour forecast for all 15 locations."""
     query = """
     WITH latest AS (
         SELECT time, location_id, pm2_5, pm10, temperature, humidity,
@@ -292,7 +353,8 @@ def predict_all():
     ORDER BY location_id, time ASC;
     """
     df = pd.read_sql(query, engine)
-    df['aqi'] = df.apply(lambda r: get_aqi(r['pm2_5'], r['pm10']), axis=1)
+    # Model features now use US EPA (new model2.pkl was retrained on this)
+    df['aqi'] = df.apply(lambda r: get_aqi_display(r['pm2_5'], r['pm10']), axis=1)
 
     results = {}
     for loc_id, grp in df.groupby('location_id'):
@@ -310,7 +372,6 @@ def predict_all():
 
 @app.get("/health")
 def health():
-    """Render health-check endpoint."""
     return {"status": "ok"}
 
 

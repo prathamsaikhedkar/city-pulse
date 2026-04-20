@@ -30,6 +30,7 @@ Thumbs.db
 CityPulse.md
 SRS.md
 train.ipynb
+train2.py
 check_db.py
 check_db_status.py
 database_init.py

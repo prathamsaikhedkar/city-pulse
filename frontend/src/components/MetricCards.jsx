@@ -21,11 +21,13 @@ function StatCard({ icon: Icon, iconColor, label, value, unit, sub }) {
       p: 2.5,
       display: 'flex',
       flexDirection: 'column',
-      gap: 1,
+      alignItems: 'center',
+      textAlign: 'center',
+      gap: 1.5,
       boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
       height: '100%',
     }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
         <Box sx={{
           bgcolor: `${iconColor}15`,
           borderRadius: 2,
@@ -39,7 +41,7 @@ function StatCard({ icon: Icon, iconColor, label, value, unit, sub }) {
           {label}
         </Typography>
       </Box>
-      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 0.5 }}>
         <Typography sx={{ fontSize: '1.7rem', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>
           {value}
         </Typography>
@@ -55,11 +57,12 @@ export default function MetricCards({ selectedLocation, currentData, isForecast 
 
   const aqiVal = Math.round(currentData.aqi ?? 0);
   const meta   = AQI_META(aqiVal);
+  const mdCols = isForecast ? 4 : 3;
 
   return (
-    <Grid container spacing={2} mb={4}>
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 4, '& > *': { flex: 1, minWidth: { xs: '100%', sm: 220 } } }}>
       {/* Big AQI card */}
-      <Grid item xs={12} sm={6} md={3}>
+      <Box>
         <Box sx={{
           bgcolor: meta.bg,
           borderRadius: 3,
@@ -68,9 +71,11 @@ export default function MetricCards({ selectedLocation, currentData, isForecast 
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          gap: 1,
+          alignItems: 'center',
+          textAlign: 'center',
+          gap: 1.5,
         }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
             <Box sx={{ bgcolor: meta.badge, borderRadius: 2, p: 0.75, display: 'flex' }}>
               <AirRoundedIcon sx={{ fontSize: 20, color: meta.color }} />
             </Box>
@@ -78,7 +83,7 @@ export default function MetricCards({ selectedLocation, currentData, isForecast 
               Air Quality Index
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
             <Typography sx={{ fontSize: '2.4rem', fontWeight: 800, color: meta.color, lineHeight: 1 }}>
               {aqiVal}
             </Typography>
@@ -92,22 +97,24 @@ export default function MetricCards({ selectedLocation, currentData, isForecast 
             {selectedLocation.name}
           </Typography>
         </Box>
-      </Grid>
+      </Box>
 
       {/* PM2.5 / PM10 */}
-      <Grid item xs={12} sm={6} md={3}>
-        <StatCard
-          icon={ScatterPlotRoundedIcon}
-          iconColor="#6366f1"
-          label="Particulates"
-          value={currentData.pm2_5 !== undefined ? `${currentData.pm2_5.toFixed(1)} / ${currentData.pm10?.toFixed(1)}` : 'N/A'}
-          unit={currentData.pm2_5 !== undefined ? 'µg/m³' : ''}
-          sub={currentData.pm2_5 !== undefined ? 'PM2.5 / PM10' : isForecast ? 'ML Projection' : 'No data'}
-        />
-      </Grid>
+      {!isForecast && (
+        <Box>
+          <StatCard
+            icon={ScatterPlotRoundedIcon}
+            iconColor="#6366f1"
+            label="Particulates"
+            value={currentData.pm2_5 !== undefined ? `${currentData.pm2_5.toFixed(1)} / ${currentData.pm10?.toFixed(1)}` : 'N/A'}
+            unit={currentData.pm2_5 !== undefined ? 'µg/m³' : ''}
+            sub={currentData.pm2_5 !== undefined ? 'PM2.5 / PM10' : 'No data'}
+          />
+        </Box>
+      )}
 
       {/* Temperature */}
-      <Grid item xs={12} sm={6} md={3}>
+      <Box>
         <StatCard
           icon={ThermostatRoundedIcon}
           iconColor="#ef4444"
@@ -116,10 +123,10 @@ export default function MetricCards({ selectedLocation, currentData, isForecast 
           unit="°C"
           sub="Current ambient temperature"
         />
-      </Grid>
+      </Box>
 
       {/* Humidity */}
-      <Grid item xs={12} sm={6} md={3}>
+      <Box>
         <StatCard
           icon={WaterDropRoundedIcon}
           iconColor="#0ea5e9"
@@ -128,7 +135,7 @@ export default function MetricCards({ selectedLocation, currentData, isForecast 
           unit="%"
           sub="Relative humidity"
         />
-      </Grid>
-    </Grid>
+      </Box>
+    </Box>
   );
 }

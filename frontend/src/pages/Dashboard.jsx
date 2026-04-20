@@ -27,9 +27,11 @@ export default function Dashboard() {
   const currentData         = selectedDataHistory[0] ?? null;
 
   if (loading) return (
-    <Box display="flex" alignItems="center" justifyContent="center" height="60vh" flexDirection="column" gap={2}>
-      <CircularProgress sx={{ color: '#0ea5e9' }} />
-      <Typography variant="body2" sx={{ color: '#94a3b8' }}>Loading live data…</Typography>
+    <Box display="flex" alignItems="center" justifyContent="center" minHeight="calc(100vh - 200px)" flexDirection="column" gap={3}>
+      <CircularProgress size={64} thickness={4.5} sx={{ color: '#0ea5e9', animationDuration: '0.8s' }} />
+      <Box textAlign="center">
+        <Typography variant="h6" sx={{ color: '#64748b', fontWeight: 600 }}>Loading live data…</Typography>
+      </Box>
     </Box>
   );
 
@@ -64,6 +66,7 @@ export default function Dashboard() {
               fontSize: '0.85rem',
               color: '#64748b',
               textTransform: 'none',
+              '&:hover': { bgcolor: '#f1f5f9' },
               '&.Mui-selected': {
                 bgcolor: '#f0f9ff',
                 color: '#0ea5e9',
@@ -97,13 +100,19 @@ export default function Dashboard() {
 
       {/* Analytics View — charts + right selector */}
       {view === 'charts' && (
-        <Box sx={{ display: 'flex', gap: 2.5, alignItems: 'flex-start' }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column-reverse', md: 'row' }, gap: 2.5, alignItems: 'flex-start' }}>
           {/* Left: charts */}
-          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+          <Box sx={{ flexGrow: 1, width: '100%', minWidth: 0 }}>
             <DashboardAnalytics data={selectedDataHistory} />
           </Box>
           {/* Right: sticky sensor selector */}
-          <Box sx={{ width: 256, flexShrink: 0, position: 'sticky', top: 80, maxHeight: 'calc(100vh - 96px)' }}>
+          <Box sx={{ 
+            width: { xs: '100%', md: 256 }, 
+            flexShrink: 0, 
+            position: { md: 'sticky' }, 
+            top: 80, 
+            maxHeight: { xs: 80, md: 'calc(100vh - 96px)' } 
+          }}>
             <LocationSelector
               selectedLocationId={selectedLocationId}
               onChange={setSelectedLocationId}

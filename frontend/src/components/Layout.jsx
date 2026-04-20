@@ -30,24 +30,14 @@ export default function Layout({ children }) {
           zIndex: 1200,
         }}
       >
-        <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, md: 4 }, minHeight: '64px !important' }}>
-          {/* Logo + Brand */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box
-              component="img"
-              src={logo}
-              alt="CityPulse"
-              sx={{ height: 36, width: 'auto', objectFit: 'contain' }}
-            />
-            <Box>
-              <Typography variant="h6" sx={{ lineHeight: 1.2, letterSpacing: '-0.3px' }}>
-                CityPulse
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 400 }}>
-                Gwalior Air Quality Monitor
-              </Typography>
-            </Box>
-          </Box>
+        <Toolbar sx={{ justifyContent: 'space-evenly', alignItems: 'center', px: { xs: 2, md: 4 }, minHeight: '64px !important' }}>
+          {/* Logo */}
+          <Box
+            component="img"
+            src={logo}
+            alt="CityPulse"
+            sx={{ height: 54, width: 'auto', objectFit: 'contain' }}
+          />
 
           {/* Navigation Toggle */}
           <ToggleButtonGroup
@@ -65,11 +55,6 @@ export default function Layout({ children }) {
               AI Forecast
             </ToggleButton>
           </ToggleButtonGroup>
-
-          {/* Right slot — timestamp */}
-          <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 500, display: { xs: 'none', md: 'block' } }}>
-            {new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-          </Typography>
         </Toolbar>
       </AppBar>
 

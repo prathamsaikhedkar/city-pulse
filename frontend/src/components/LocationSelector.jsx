@@ -20,7 +20,7 @@ export default function LocationSelector({ selectedLocationId, onChange, dataMap
       overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column',
-      maxHeight: 'calc(100vh - 96px)',
+      height: '100%',
     }}>
       {/* Header */}
       <Box sx={{
@@ -39,10 +39,11 @@ export default function LocationSelector({ selectedLocationId, onChange, dataMap
       </Box>
 
       {/* Scrollable list */}
-      <FormControl component="fieldset" sx={{ overflowY: 'auto', px: 1.5, py: 1 }}>
+      <FormControl component="fieldset" sx={{ flexGrow: 1, minHeight: 0, overflowY: 'auto', overflowX: { xs: 'auto', md: 'hidden' }, px: { xs: 0, md: 1.5 }, py: 1 }}>
         <RadioGroup
           value={selectedLocationId}
           onChange={(e) => onChange(Number(e.target.value))}
+          sx={{ display: 'flex', flexDirection: { xs: 'row', md: 'column' }, flexWrap: 'nowrap', px: { xs: 1.5, md: 0 } }}
         >
           {gwaliorLocations.map((loc) => {
             const locData  = dataMap?.[loc.id];
@@ -93,7 +94,8 @@ export default function LocationSelector({ selectedLocationId, onChange, dataMap
                   px: 0.75,
                   py: 0.25,
                   borderRadius: 1.5,
-                  width: '100%',
+                  width: { xs: 'auto', md: '100%' },
+                  minWidth: { xs: 'fit-content', md: 'auto' },
                   bgcolor: selected ? '#e0f2fe' : 'transparent',
                   transition: 'background-color 0.15s ease',
                   '&:hover': { bgcolor: selected ? '#e0f2fe' : '#f1f5f9' },

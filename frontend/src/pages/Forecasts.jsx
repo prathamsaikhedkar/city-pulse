@@ -73,10 +73,12 @@ export default function Forecasts() {
   const currentData         = selectedDataHistory[0] ?? null;
 
   if (loading) return (
-    <Box display="flex" alignItems="center" justifyContent="center" height="60vh" flexDirection="column" gap={2}>
-      <CircularProgress size={52} sx={{ color: '#6366f1' }} />
-      <Typography variant="h6" sx={{ color: '#64748b', fontWeight: 600 }}>Running XGBoost Predictions…</Typography>
-      <Typography variant="body2" sx={{ color: '#94a3b8' }}>Forecasting 24 × 15 location-hours</Typography>
+    <Box display="flex" alignItems="center" justifyContent="center" minHeight="calc(100vh - 200px)" flexDirection="column" gap={3}>
+      <CircularProgress size={64} thickness={4.5} sx={{ color: '#6366f1', animationDuration: '0.8s' }} />
+      <Box textAlign="center">
+        <Typography variant="h6" sx={{ color: '#64748b', fontWeight: 600 }}>Analyzing Air Quality Trends…</Typography>
+        <Typography variant="body2" sx={{ color: '#94a3b8', mt: 0.5 }}>Forecasting 24 × 15 location-hours</Typography>
+      </Box>
     </Box>
   );
 
@@ -87,10 +89,7 @@ export default function Forecasts() {
         background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
         borderRadius: 3, p: 3, color: '#fff', mb: 3,
       }}>
-        <Typography variant="h5" sx={{ fontWeight: 800, mb: 0.5 }}>AI Air Quality Forecast</Typography>
-        <Typography variant="body2" sx={{ opacity: 0.85 }}>
-          XGBoost autoregressive model · 24-hour horizon · {gwaliorLocations.length} sensor locations
-        </Typography>
+        <Typography variant="h5" sx={{ fontWeight: 800 }}>AI Air Quality Forecast</Typography>
       </Box>
 
       {/* Metric Cards */}
@@ -122,6 +121,7 @@ export default function Forecasts() {
               fontSize: '0.85rem',
               textTransform: 'none',
               color: '#7c3aed',
+              '&:hover': { bgcolor: '#f1f5f9' },
               '&.Mui-selected': {
                 bgcolor: '#f3e8ff',
                 color: '#6d28d9',
@@ -155,21 +155,24 @@ export default function Forecasts() {
 
       {/* Chart view — projection + right selector */}
       {view === 'chart' && (
-        <Box sx={{ display: 'flex', gap: 2.5, alignItems: 'flex-start' }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column-reverse', md: 'row' }, gap: 2.5, alignItems: 'flex-start' }}>
           {/* Left: chart */}
-          <Paper sx={{ flexGrow: 1, minWidth: 0, p: 3, border: '1px solid #ede9fe' }}>
+          <Paper sx={{ flexGrow: 1, width: '100%', minWidth: 0, p: { xs: 2, md: 3 }, border: '1px solid #ede9fe' }}>
             <Typography variant="h6" sx={{ color: '#4f46e5', mb: 0.25 }}>
               24-Hour AQI Projection — {selectedLocation?.name}
             </Typography>
-            <Typography variant="caption" sx={{ color: '#a78bfa' }}>
-              {selectedLocation?.description}
-            </Typography>
-            <Box mt={2}>
+            <Box mt={3}>
               <ForecastChart data={selectedDataHistory} />
             </Box>
           </Paper>
           {/* Right: sticky selector */}
-          <Box sx={{ width: 256, flexShrink: 0, position: 'sticky', top: 80, maxHeight: 'calc(100vh - 96px)' }}>
+          <Box sx={{ 
+            width: { xs: '100%', md: 256 }, 
+            flexShrink: 0, 
+            position: { md: 'sticky' }, 
+            top: 80, 
+            maxHeight: { xs: 80, md: 'calc(100vh - 96px)' } 
+          }}>
             <LocationSelector
               selectedLocationId={selectedLocationId}
               onChange={setSelectedLocationId}
