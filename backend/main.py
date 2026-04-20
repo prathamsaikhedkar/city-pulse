@@ -26,7 +26,7 @@ with open(os.path.join(_dir, 'model.pkl'), 'rb') as f:
     model = pickle.load(f)
 
 # ── Locations ──────────────────────────────────────────────────────────────────
-with open(os.path.join(_dir, '..', 'gwl_data.json'), 'r') as f:
+with open(os.path.join(_dir, 'gwl_data.json'), 'r') as f:
     LOCATIONS = json.load(f)
 
 # ── OWM API keys (rotated to stay within free-tier rate limits) ────────────────
