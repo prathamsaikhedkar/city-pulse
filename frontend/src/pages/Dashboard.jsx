@@ -3,6 +3,7 @@ import { Box, Paper, Typography, CircularProgress, ToggleButtonGroup, ToggleButt
 import MapRoundedIcon from '@mui/icons-material/MapRounded';
 import BarChartRoundedIcon from '@mui/icons-material/BarChartRounded';
 import { gwaliorLocations } from '../mockData/gwaliorData';
+import { api } from '../api';
 import CityMap from '../components/CityMap';
 import MetricCards from '../components/MetricCards';
 import DashboardAnalytics from '../components/DashboardAnalytics';
@@ -15,7 +16,7 @@ export default function Dashboard() {
   const [view, setView]           = useState('map'); // 'map' | 'charts'
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/history')
+    api.history()
       .then(r => r.json())
       .then(d => { setDataMap(d); setLoading(false); })
       .catch(() => setLoading(false));

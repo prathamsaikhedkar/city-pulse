@@ -1,12 +1,36 @@
-# Environment variables
+# ── Secrets ────────────────────────────────────────────────────────────────────
 .env
+.env.local
+.env.*.local
+neon_connection_details.txt
 
-# Python cache and virtual environments
+# ── Python ─────────────────────────────────────────────────────────────────────
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.venv/
 venv/
 env/
-.vscode/
+*.egg-info/
 
-# OS generated files
+# ── Node ───────────────────────────────────────────────────────────────────────
+node_modules/
+dist/
+dist-ssr/
+build/
+
+# ── Editor / OS ────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
 .DS_Store
+Thumbs.db
+
+# ── Project-specific ──────────────────────────────────────────────────────────
+CityPulse.md
+SRS.md
+train.ipynb
+check_db.py
+check_db_status.py
+database_init.py
+generate_notebook.py
