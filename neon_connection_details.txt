@@ -1,0 +1,65 @@
+To connect your FastAPI backend on Render to Neon, you'll use a connection string and store it as an environment variable.123
+
+Get your connection string
+From your Neon Project Dashboard, click the Connect button to open the Connection Details modal.3 Select your branch, database, and role, and your connection string will appear.3
+
+For FastAPI applications, use a pooled connection string (with -pooler in the hostname) since this can support a high number of concurrent connections.4
+
+Set up your environment variable
+Create a .env file in your project directory and add your Neon connection string:12
+
+DATABASE_URL=postgres://user:password@your-neon-hostname-pooler.neon.tech/dbname?sslmode=require
+12
+
+On Render, you'll add this DATABASE_URL as an environment variable in your service settings instead of using the .env file.
+
+Configure your FastAPI application
+Install the required dependencies:2
+
+pip install python-dotenv asyncpg
+2
+
+Create a settings.py file to reference the DATABASE_URL environment variable:1
+
+python
+from starlette.config import Config
+from starlette.datastructures import Secret
+try:
+ config = Config(".env")
+except FileNotFoundError:
+ config = Config()
+DATABASE_URL = config("DATABASE_URL", cast=Secret)
+1
+
+Set up your database connection with connection pooling in a database.py file:2
+
+python
+import os
+import asyncpg
+import dotenv
+from loguru import logger
+from typing import Optional
+
+dotenv.load_dotenv()
+
+conn_pool: Optional[asyncpg.Pool] = None
+
+async def init_postgres() -> None:
+    global conn_pool
+    try:
+        logger.info("Initializing PostgreSQL connection pool...")
+
+        conn_pool = await asyncpg.create_pool(
+            dsn=os.getenv("DATABASE_URL"), min_size=1, max_size=10
+        )
+        logger.info("PostgreSQL connection pool created successfully.")
+
+    except Exception as e:
+        logger.error(f"Error initializing PostgreSQL connection pool: {e}")
+        raise
+2
+
+The pool_recycle=300 option is recommended to prevent the pool from using connections that have passed a certain age, corresponding with Neon's default compute auto-suspend.1
+
+Deploy to Render
+When deploying to Render, add your Neon connection string as an environment variable in your Render service settings. The connection will work the same way as in your local development environment.
