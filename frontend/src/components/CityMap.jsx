@@ -20,7 +20,6 @@ export default function CityMap({ dataMap, selectedLocationId }) {
   const leafletMap = useRef(null);
   const markersRef = useRef([]);
 
-  // Init map once
   useEffect(() => {
     if (leafletMap.current || !window.L) return;
     leafletMap.current = window.L.map(mapRef.current, { zoomControl: true }).setView([26.218, 78.183], 12);
@@ -31,7 +30,6 @@ export default function CityMap({ dataMap, selectedLocationId }) {
     return () => { leafletMap.current?.remove(); leafletMap.current = null; };
   }, []);
 
-  // Update markers on data change
   useEffect(() => {
     if (!leafletMap.current || !window.L) return;
     markersRef.current.forEach(m => leafletMap.current.removeLayer(m));

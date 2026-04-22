@@ -10,8 +10,6 @@ export default function AQIChart({ data, locationName, chartColor = '#2e7d32', b
 
     const ctx = chartRef.current.getContext('2d');
     
-    // Data is from present (index 0) to 23 hours ago (index 23).
-    // We want to chart from 23 hours ago to present.
     const sortedData = [...data].reverse();
 
     const labels = sortedData.map(d => {

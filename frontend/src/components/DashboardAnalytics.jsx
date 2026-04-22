@@ -34,7 +34,6 @@ export default function DashboardAnalytics({ data }) {
   useEffect(() => {
     if (!data?.length) return;
 
-    // CDN script may not be ready yet — poll until available
     let attempts = 0;
     const tryInit = () => {
       if (!window.Chart) {
@@ -50,17 +49,15 @@ export default function DashboardAnalytics({ data }) {
     Object.values(charts.current).forEach(c => c?.destroy());
 
     const C = window.Chart;
-    const rev = [...data].reverse(); // oldest → newest
+    const rev = [...data].reverse();
     const latest = data[0];
 
-    // Hour labels for last 24 (formatted HH:00)
     const last24 = rev.slice(-24);
     const labels24 = last24.map(d => {
       const h = new Date(d.time).getHours();
       return `${String(h).padStart(2, '0')}:00`;
     });
 
-    // --- 1. AQI Trend ---
     charts.current.trend = new C(refs.trend.current.getContext('2d'), {
       type: 'line',
       data: {
@@ -82,7 +79,6 @@ export default function DashboardAnalytics({ data }) {
       },
     });
 
-    // --- 2. Pollutant Polar Area ---
     charts.current.radar = new C(refs.radar.current.getContext('2d'), {
       type: 'polarArea',
       data: {
@@ -107,7 +103,6 @@ export default function DashboardAnalytics({ data }) {
       },
     });
 
-    // --- 3. Temp vs Humidity (dual y-axis) ---
     const last48 = rev.slice(-48);
     const labels48 = last48.map(d => {
       const h = new Date(d.time).getHours();
@@ -145,7 +140,6 @@ export default function DashboardAnalytics({ data }) {
       },
     });
 
-    // --- 4. AQI Category Doughnut ---
     const cats = { Good: 0, Moderate: 0, Poor: 0, Severe: 0 };
     data.forEach(d => {
       if (d.aqi <= 50) cats.Good++;
@@ -171,7 +165,6 @@ export default function DashboardAnalytics({ data }) {
       },
     });
 
-    // --- 5. Stacked trace gases (NO2, SO2, O3) ---
     charts.current.stack = new C(refs.stack.current.getContext('2d'), {
       type: 'bar',
       data: {
@@ -192,7 +185,6 @@ export default function DashboardAnalytics({ data }) {
       },
     });
 
-    // --- 6. Diurnal average by hour ---
     const byHour = {};
     data.forEach(d => {
       const hr = new Date(d.time).getHours();
@@ -273,7 +265,6 @@ export default function DashboardAnalytics({ data }) {
   );
 }
 
-// Helper: vertical gradient for area charts
 function createGradient(canvas, color) {
   const ctx = canvas?.getContext('2d');
   if (!ctx) return `${color}20`;

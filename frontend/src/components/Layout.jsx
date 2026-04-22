@@ -19,7 +19,6 @@ export default function Layout({ children }) {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f0f2f5', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
       <AppBar
         position="sticky"
         elevation={0}
@@ -31,7 +30,6 @@ export default function Layout({ children }) {
         }}
       >
         <Toolbar sx={{ justifyContent: 'space-evenly', alignItems: 'center', px: { xs: 2, md: 4 }, minHeight: '64px !important' }}>
-          {/* Logo */}
           <Box
             component="img"
             src={logo}
@@ -39,7 +37,6 @@ export default function Layout({ children }) {
             sx={{ height: 54, width: 'auto', objectFit: 'contain' }}
           />
 
-          {/* Navigation Toggle */}
           <ToggleButtonGroup
             value={currentTab}
             exclusive
@@ -58,7 +55,6 @@ export default function Layout({ children }) {
         </Toolbar>
       </AppBar>
 
-      {/* Page Content */}
       <Box component="main" sx={{ flexGrow: 1, px: { xs: 2, md: 3 }, py: { xs: 2, md: 2.5 } }}>
         {children}
       </Box>

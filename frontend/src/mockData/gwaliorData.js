@@ -16,26 +16,21 @@ export const gwaliorLocations = [
   { id: 15, name: "Hurawali", lat: 26.2040, lng: 78.2320, description: "A fast-developing residential zone on the eastern edge." }
 ];
 
-// Helper to generate a random number within a range
 const getRandom = (min, max) => Math.random() * (max - min) + min;
 
-// Generate 24 hours of mock AQI data for a given location
 export const generateMockAQIData = (locationId) => {
   const data = [];
   const now = new Date();
   
-  // Base AQI somewhat depends on location to add variance
-  // For instance, industrial areas like Hazira or Birla Nagar might have higher base AQI
   let baseAqi = 80;
-  if ([4, 13, 9].includes(locationId)) baseAqi += 40; // Industrial/outskirts
-  if ([1, 11].includes(locationId)) baseAqi -= 20; // Fort/Sada
+  if ([4, 13, 9].includes(locationId)) baseAqi += 40;
+  if ([1, 11].includes(locationId)) baseAqi -= 20;
 
   for (let i = 23; i >= 0; i--) {
     const time = new Date(now.getTime() - i * 60 * 60 * 1000);
     
-    // Add some random noise and a slight diurnal pattern
     const hour = time.getHours();
-    const timeEffect = (hour > 8 && hour < 20) ? 20 : 0; // Higher during day
+    const timeEffect = (hour > 8 && hour < 20) ? 20 : 0;
     
     const currentAqi = Math.max(10, Math.round(baseAqi + timeEffect + getRandom(-15, 15)));
     
@@ -56,7 +51,6 @@ export const generateMockAQIData = (locationId) => {
   return data;
 };
 
-// Generate data map for all locations
 export const useAllMockData = () => {
     const dataMap = {};
     gwaliorLocations.forEach(loc => {

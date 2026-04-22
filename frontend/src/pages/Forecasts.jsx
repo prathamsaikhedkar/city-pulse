@@ -8,7 +8,6 @@ import CityMap from '../components/CityMap';
 import MetricCards from '../components/MetricCards';
 import LocationSelector from '../components/LocationSelector';
 
-// Inline forecast-specific chart
 function ForecastChart({ data }) {
   const canvasRef = useRef(null);
   const chartRef  = useRef(null);
@@ -59,7 +58,7 @@ export default function Forecasts() {
   const [selectedLocationId, setSelectedLocationId] = useState(gwaliorLocations[0].id);
   const [dataMap, setDataMap]   = useState({});
   const [loading, setLoading]   = useState(true);
-  const [view, setView]         = useState('map'); // 'map' | 'chart'
+  const [view, setView]         = useState('map');
 
   useEffect(() => {
     api.predictAll()
@@ -84,7 +83,6 @@ export default function Forecasts() {
 
   return (
     <Box sx={{ bgcolor: '#faf5ff', borderRadius: 4, border: '1px solid #ede9fe', p: { xs: 2, md: 3 }, minHeight: '85vh' }}>
-      {/* Banner */}
       <Box sx={{
         background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
         borderRadius: 3, p: 3, color: '#fff', mb: 3,
@@ -92,10 +90,8 @@ export default function Forecasts() {
         <Typography variant="h5" sx={{ fontWeight: 800 }}>AI Air Quality Forecast</Typography>
       </Box>
 
-      {/* Metric Cards */}
       <MetricCards selectedLocation={selectedLocation} currentData={currentData} isForecast />
 
-      {/* Full-width Map / Chart toggle */}
       <Box
         sx={{
           mx: { xs: -2, md: -3 },
@@ -138,7 +134,6 @@ export default function Forecasts() {
         </ToggleButtonGroup>
       </Box>
 
-      {/* Map View — full width, no selector */}
       {view === 'map' && (
         <Paper sx={{ p: 0, overflow: 'hidden', border: '1px solid #ede9fe' }}>
           <Box sx={{ px: 2.5, pt: 2, pb: 1 }}>
@@ -153,10 +148,8 @@ export default function Forecasts() {
         </Paper>
       )}
 
-      {/* Chart view — projection + right selector */}
       {view === 'chart' && (
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column-reverse', md: 'row' }, gap: 2.5, alignItems: 'flex-start' }}>
-          {/* Left: chart */}
           <Paper sx={{ flexGrow: 1, width: '100%', minWidth: 0, p: { xs: 2, md: 3 }, border: '1px solid #ede9fe' }}>
             <Typography variant="h6" sx={{ color: '#4f46e5', mb: 0.25 }}>
               24-Hour AQI Projection — {selectedLocation?.name}
@@ -165,7 +158,6 @@ export default function Forecasts() {
               <ForecastChart data={selectedDataHistory} />
             </Box>
           </Paper>
-          {/* Right: sticky selector */}
           <Box sx={{ 
             width: { xs: '100%', md: 256 }, 
             flexShrink: 0, 

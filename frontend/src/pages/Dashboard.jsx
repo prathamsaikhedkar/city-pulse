@@ -13,7 +13,7 @@ export default function Dashboard() {
   const [selectedLocationId, setSelectedLocationId] = useState(gwaliorLocations[0].id);
   const [dataMap, setDataMap]     = useState({});
   const [loading, setLoading]     = useState(true);
-  const [view, setView]           = useState('map'); // 'map' | 'charts'
+  const [view, setView]           = useState('map');
 
   useEffect(() => {
     api.history()
@@ -37,10 +37,8 @@ export default function Dashboard() {
 
   return (
     <Box>
-      {/* Metric Cards */}
       <MetricCards selectedLocation={selectedLocation} currentData={currentData} />
 
-      {/* Full-width Map / Charts toggle */}
       <Box
         sx={{
           mx: { xs: -2, md: -3 },
@@ -83,7 +81,6 @@ export default function Dashboard() {
         </ToggleButtonGroup>
       </Box>
 
-      {/* Map View — full width, no selector */}
       {view === 'map' && (
         <Paper sx={{ p: 0, overflow: 'hidden' }}>
           <Box sx={{ px: 2.5, pt: 2, pb: 1 }}>
@@ -98,14 +95,11 @@ export default function Dashboard() {
         </Paper>
       )}
 
-      {/* Analytics View — charts + right selector */}
       {view === 'charts' && (
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column-reverse', md: 'row' }, gap: 2.5, alignItems: 'flex-start' }}>
-          {/* Left: charts */}
           <Box sx={{ flexGrow: 1, width: '100%', minWidth: 0 }}>
             <DashboardAnalytics data={selectedDataHistory} />
           </Box>
-          {/* Right: sticky sensor selector */}
           <Box sx={{ 
             width: { xs: '100%', md: 256 }, 
             flexShrink: 0, 

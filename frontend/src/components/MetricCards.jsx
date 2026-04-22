@@ -61,7 +61,6 @@ export default function MetricCards({ selectedLocation, currentData, isForecast 
 
   return (
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 4, '& > *': { flex: 1, minWidth: { xs: '100%', sm: 220 } } }}>
-      {/* Big AQI card */}
       <Box>
         <Box sx={{
           bgcolor: meta.bg,
@@ -99,7 +98,6 @@ export default function MetricCards({ selectedLocation, currentData, isForecast 
         </Box>
       </Box>
 
-      {/* PM2.5 / PM10 */}
       {!isForecast && (
         <Box>
           <StatCard
@@ -113,7 +111,6 @@ export default function MetricCards({ selectedLocation, currentData, isForecast 
         </Box>
       )}
 
-      {/* Temperature */}
       <Box>
         <StatCard
           icon={ThermostatRoundedIcon}
@@ -125,7 +122,6 @@ export default function MetricCards({ selectedLocation, currentData, isForecast 
         />
       </Box>
 
-      {/* Humidity */}
       <Box>
         <StatCard
           icon={WaterDropRoundedIcon}

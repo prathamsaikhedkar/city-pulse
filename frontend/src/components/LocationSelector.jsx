@@ -22,7 +22,6 @@ export default function LocationSelector({ selectedLocationId, onChange, dataMap
       flexDirection: 'column',
       height: '100%',
     }}>
-      {/* Header */}
       <Box sx={{
         px: 2,
         py: 1.5,
@@ -38,7 +37,6 @@ export default function LocationSelector({ selectedLocationId, onChange, dataMap
         </Typography>
       </Box>
 
-      {/* Scrollable list */}
       <FormControl component="fieldset" sx={{ flexGrow: 1, minHeight: 0, overflowY: 'auto', overflowX: { xs: 'auto', md: 'hidden' }, px: { xs: 0, md: 1.5 }, py: 1 }}>
         <RadioGroup
           value={selectedLocationId}
