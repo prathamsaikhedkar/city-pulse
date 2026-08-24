@@ -16,6 +16,7 @@ DATABASE_URL = os.getenv(
     "WEB_POSTGRES_LINK",
     f"postgresql+psycopg2://postgres:{os.getenv('POSTGRES_PW')}@127.0.0.1:5432/AQI_Data"
 )
+
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 _dir = os.path.dirname(__file__)

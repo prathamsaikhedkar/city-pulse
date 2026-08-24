@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSA Visualizer - Maximum Number of Balloons</title>
+    <style>
+        body {
+            background-color: #222;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        h2 {
+            margin-bottom: 5px;
+            color: #4CAF50;
+        }
+
+        .description {
+            color: #aaa;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+
+        /* Controls Section */
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 40px;
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .control-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #ddd;
+        }
+
+        .control-group input {
+            width: 50px;
+            background: #333;
+            border: 1px solid #555;
+            color: white;
+            padding: 5px;
+            text-align: center;
+            border-radius: 4px;
+        }
+
+        /* Chart Visual Container */
+        .visual-container {
+            display: flex;
+            align-items: flex-end;
+            gap: 15px;
+            position: relative;
+            background: #1a1a1a;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+        }
+
+        /* Individual Column Stack */
+        .column {
+            display: flex;
+            flex-direction: column-reverse; /* Builds blocks from bottom to top */
+            align-items: center;
+            width: 60px;
+            min-height: 200px;
+            border-bottom: 3px solid #666;
+        }
+
+        /* Character Blocks */
+        .block {
+            width: 100%;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            border: 1px solid #333;
+            box-sizing: border-box;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Complete matching sets get highlighted green (like in image_80fd21.png) */
+        .block.completed {
+            background-color: #4d7c0f;
+            color: #fff;
+            border-color: #3f6212;
+        }
+
+        /* Leftover blocks stay dark/muted */
+        .block.remaining {
+            background-color: #333;
+            color: #888;
+        }
+
+        /* Single/incomplete double letter indicator (red 'l' or 'o' warning) */
+        .block.incomplete-pair {
+            color: #ef4444;
+            background-color: #333;
+        }
+
+        /* Labels underneath the columns */
+        .column-label {
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .letter {
+            font-size: 18px;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .count-text {
+            font-size: 14px;
+            color: #888;
+        }
+
+        .count-text.min-marker {
+            color: #84cc16;
+            font-weight: bold;
+        }
+
+        /* Global Result Banner */
+        .result-banner {
+            margin-top: 30px;
+            font-size: 22px;
+            font-weight: bold;
+            background-color: #1f2937;
+            padding: 15px 30px;
+            border-radius: 30px;
+            border: 2px solid #84cc16;
+            color: #84cc16;
+            box-shadow: 0 4px 10px rgba(132, 204, 22, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <h2>"Maximum Number of Balloons" Visualizer</h2>
+    <div class="description">Adjust available characters to see how many full "balloon" words can stack up.</div>
+
+    <!-- User Input Controls -->
+    <div class="controls">
+        <div class="control-group">
+            <label>b</label>
+            <input type="number" id="input-b" value="4" min="0" max="6">
+        </div>
+        <div class="control-group">
+            <label>a</label>
+            <input type="number" id="input-a" value="3" min="0" max="6">
+        </div>
+        <div class="control-group">
+            <label>l</label>
+            <input type="number" id="input-l" value="5" min="0" max="12">
+        </div>
+        <div class="control-group">
+            <label>o</label>
+            <input type="number" id="input-o" value="6" min="0" max="12">
+        </div>
+        <div class="control-group">
+            <label>n</label>
+            <input type="number" id="input-n" value="4" min="0" max="6">
+        </div>
+    </div>
+
+    <!-- Visualization Grid Container -->
+    <div class="visual-container">
+        <!-- Columns will be injected here dynamically via JavaScript -->
+        <div id="visualizer-grid" style="display: flex; gap: 15px; align-items: flex-end;"></div>
+    </div>
+
+    <!-- Final Calculation Output -->
+    <div class="result-banner" id="result">
+        Total Words Formed: 2 sets
+    </div>
+
+    <script>
+        const letters = ['b', 'a', 'l', 'o', 'n'];
+        
+        // Define how many of each letter are required for exactly 1 "balloon" word
+        const requirements = { b: 1, a: 1, l: 2, o: 2, n: 1 };
+
+        function updateVisualizer() {
+            // 1. Gather raw counts from user inputs
+            const counts = {
+                b: parseInt(document.getElementById('input-b').value) || 0,
+                a: parseInt(document.getElementById('input-a').value) || 0,
+                l: parseInt(document.getElementById('input-l').value) || 0,
+                o: parseInt(document.getElementById('input-o').value) || 0,
+                n: parseInt(document.getElementById('input-n').value) || 0
+            };
+
+            // 2. Calculate individual word metrics per bucket
+            const possibleWords = {
+                b: Math.floor(counts.b / requirements.b),
+                a: Math.floor(counts.a / requirements.a),
+                l: Math.floor(counts.l / requirements.l),
+                o: Math.floor(counts.o / requirements.o),
+                n: Math.floor(counts.n / requirements.n)
+            };
+
+            // The bottleneck is the lowest possible word count across all buckets
+            const maxBalloons = Math.min(...Object.values(possibleWords));
+
+            const gridContainer = document.getElementById('visualizer-grid');
+            gridContainer.innerHTML = ''; // Reset container
+
+            // 3. Construct the HTML stack blocks dynamically
+            letters.forEach(char => {
+                const column = document.createElement('div');
+                column.className = 'column';
+
+                const totalItems = counts[char];
+                const req = requirements[char];
+
+                // Build blocks up to the total item count
+                for (let i = 1; i <= totalItems; i++) {
+                    const block = document.createElement('div');
+                    block.className = 'block';
+
+                    // Determine if this specific item fits into a completely formed word
+                    const threshold = maxBalloons * req;
+
+                    if (i <= threshold) {
+                        block.classList.add('completed');
+                        // Render exact character text inside the green blocks
+                        block.innerText = req === 2 ? char + char : char;
+                        
+                        // For doubled characters (l, o), skip rendering every second block to match image layout
+                        if (req === 2 && i % 2 === 0) {
+                            continue; 
+                        }
+                    } else {
+                        // Handle the remaining blocks that didn't make the full word sets cut
+                        block.classList.add('remaining');
+                        if (req === 1) {
+                            block.innerText = char;
+                        } else {
+                            // Check if a doubled letter is missing its pair companion (red text alert)
+                            if (i === totalItems && i % 2 !== 0) {
+                                block.classList.add('incomplete-pair');
+                                block.innerText = char; // single red character
+                            } else if (i % 2 === 0) {
+                                block.innerText = char + char;
+                            } else {
+                                continue;
+                            }
+                        }
+                    }
+                    column.appendChild(block);
+                }
+
+                // Add the lower meta-labels matching image_80fd21.png style
+                const labelContainer = document.createElement('div');
+                labelContainer.className = 'column-label';
+                
+                const isMin = possibleWords[char] === maxBalloons;
+                
+                labelContainer.innerHTML = `
+                    <span class="letter">${req === 2 ? char+char : char}</span>
+                    <span class="count-text ${isMin ? 'min-marker' : ''}">${possibleWords[char]}</span>
+                    ${isMin ? '<div class="count-text min-marker" style="font-size:11px;">(min)</div>' : ''}
+                `;
+
+                const wrapper = document.createElement('div');
+                wrapper.style.display = 'flex';
+                wrapper.style.direction = 'column';
+                wrapper.appendChild(column);
+                wrapper.appendChild(labelContainer);
+
+                gridContainer.appendChild(wrapper);
+            });
+
+            // 4. Update total readout result banner
+            document.getElementById('result').innerText = `Total Words Formed: ${maxBalloons} ${maxBalloons === 1 ? 'set' : 'sets'} complete`;
+        }
+
+        // Attach lightweight event tracking listeners across all inputs
+        letters.forEach(char => {
+            document.getElementById(`input-${char}`).addEventListener('input', updateVisualizer);
+        });
+
+        // Fire initial render routine on window boot
+        updateVisualizer();
+    </script>
+</body>
+</html>
